@@ -50,6 +50,7 @@ fn main() {
     // Clearing screen
     println!("{}", clear::All);
 
+    // Check if file is passed via args.
     if args.len() == 2 {
         let fileuri = env::args().nth(1).expect("Missing argument");;
         let content = read_file(fileuri);
@@ -57,22 +58,18 @@ fn main() {
         let mut stdout = stdout().into_raw_mode().unwrap();
 
         write!(stdout,
-                "{}{}{}", 
+                "{}{}", 
                 cursor::Goto(1, 1),
-                cursor::Hide,
                 content).unwrap();
 
         stdout.flush().unwrap();
 
         for c in stdin.keys() {
-            // Clear the current line.
-            write!(stdout, "{}{}", termion::cursor::Goto(1, 1), termion::clear::CurrentLine).unwrap();
-
             // Print the key we type...
             match c.unwrap() {
-                // Exit.
                 Key::Char('q') => break,
-                Key::Char(c)   => println!("{}", c),
+                Key::Char('\n') => print!("\n\r"),
+                Key::Char(c)   => print!("{}", c),
                 Key::Alt(c)    => println!("Alt-{}", c),
                 Key::Ctrl(c)   => println!("Ctrl-{}", c),
                 Key::Left      => println!("<left>"),
@@ -85,9 +82,6 @@ fn main() {
             // Flush again.
             stdout.flush().unwrap();
         }
-
-    // Show the cursor again before we exit.
-    write!(stdout, "{}", termion::cursor::Show).unwrap();
     }
 }
 
