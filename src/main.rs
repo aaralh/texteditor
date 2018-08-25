@@ -9,13 +9,19 @@ use std::io::prelude::*;
 use std::fs::File;
 use std::path::Path;
 use std::env;
+use std::error::Error;
 use termion::event::Key;
 use termion::input::TermRead;
 
 
 fn read_file(fileuri: String) -> String {
 
-    let mut f = File::open(fileuri).expect("file not found");
+    let path = Path::new(&fileuri);
+
+    let mut f = match File::open(path) {
+        Err(_why) => return String::new(),
+        Ok(f) => f,
+    };
 
     let mut contents = String::new();
     f.read_to_string(&mut contents)
