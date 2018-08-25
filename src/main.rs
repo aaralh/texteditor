@@ -1,7 +1,17 @@
+extern crate termion;
+
+// Import the color module.
+use termion::{color, clear, cursor};
+use termion::raw::IntoRawMode;
+
+use std::io::{Write, stdout, stdin};
 use std::io::prelude::*;
 use std::fs::File;
 use std::path::Path;
 use std::env;
+use termion::event::Key;
+use termion::input::TermRead;
+
 
 fn read_file(fileuri: String) -> String {
 
@@ -35,11 +45,49 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     println!("{:?}", args);
 
-    if args.len() == 2 {
-    let fileuri = env::args().nth(1).expect("Missing argument");;
-    let content = read_file(fileuri);
+    let stdin = stdin();
 
-    println!("{}", content);
+    // Clearing screen
+    println!("{}", clear::All);
+
+    if args.len() == 2 {
+        let fileuri = env::args().nth(1).expect("Missing argument");;
+        let content = read_file(fileuri);
+
+        let mut stdout = stdout().into_raw_mode().unwrap();
+
+        write!(stdout,
+                "{}{}{}", 
+                cursor::Goto(1, 1),
+                cursor::Hide,
+                content).unwrap();
+
+        stdout.flush().unwrap();
+
+        for c in stdin.keys() {
+            // Clear the current line.
+            write!(stdout, "{}{}", termion::cursor::Goto(1, 1), termion::clear::CurrentLine).unwrap();
+
+            // Print the key we type...
+            match c.unwrap() {
+                // Exit.
+                Key::Char('q') => break,
+                Key::Char(c)   => println!("{}", c),
+                Key::Alt(c)    => println!("Alt-{}", c),
+                Key::Ctrl(c)   => println!("Ctrl-{}", c),
+                Key::Left      => println!("<left>"),
+                Key::Right     => println!("<right>"),
+                Key::Up        => println!("<up>"),
+                Key::Down      => println!("<down>"),
+                _              => println!("Other"),
+            }
+
+            // Flush again.
+            stdout.flush().unwrap();
+        }
+
+    // Show the cursor again before we exit.
+    write!(stdout, "{}", termion::cursor::Show).unwrap();
     }
 }
 
