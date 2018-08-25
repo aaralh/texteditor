@@ -1,8 +1,10 @@
 use std::io::prelude::*;
 use std::fs::File;
 use std::path::Path;
+use std::env;
 
 fn read_file(fileuri: String) -> String {
+
     let mut f = File::open(fileuri).expect("file not found");
 
     let mut contents = String::new();
@@ -30,6 +32,15 @@ fn save_file(fileuri: String, content: String) -> bool {
 }
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    println!("{:?}", args);
+
+    if args.len() == 2 {
+    let fileuri = env::args().nth(1).expect("Missing argument");;
+    let content = read_file(fileuri);
+
+    println!("{}", content);
+    }
 }
 
 #[cfg(test)]
