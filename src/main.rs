@@ -4,7 +4,7 @@ use termion::*;
 use termion::cursor::{self, DetectCursorPos};
 use termion::raw::IntoRawMode;
 
-use std::io::{Write, stdout, stdin};
+use std::io::{self, Write, stdout, stdin, BufRead};
 use std::io::prelude::*;
 use std::fs::File;
 use std::path::Path;
@@ -65,53 +65,66 @@ fn editor_mode(content: String, fileuri: &String) {
     for c in stdin.keys() {
         // Print the key we type...
         match c.unwrap() {
-            Key::Char('q')   => break,
-            Key::Char('\n') => print!("\n\r"),
-            Key::Char(c)   => print!("{}", c),
-            Key::Alt(c)    => println!("Alt-{}", c),
-            Key::Ctrl(c)   => println!("Ctrl-{}", c),
-            Key::Left      => print!("{}", cursor::Left(1)),
-            Key::Right     => print!("{}", cursor::Right(1)),
-            Key::Up        => print!("{}", cursor::Up(1)),
-            Key::Down      => print!("{}", cursor::Down(1)),
-            Key::Esc       => god_mode(&mut stdout),
-            _              => println!("Other"),
+            Key::Char('\n')  => print!("\n\r"),
+            Key::Char(c)     => print!("{}", c),
+            Key::Alt(c)      => println!("Alt-{}", c),
+            Key::Ctrl(c)     => println!("Ctrl-{}", c),
+            Key::Left        => print!("{}", cursor::Left(1)),
+            Key::Right       => print!("{}", cursor::Right(1)),
+            Key::Up          => print!("{}", cursor::Up(1)),
+            Key::Down        => print!("{}", cursor::Down(1)),
+            Key::Esc         => { 
+                                let result = god_mode(&mut stdout);
+                                if result {break;} else {continue}
+                                },
+            _              => print!("Other"),
         }
         // Flush again.
         stdout.flush().unwrap();
     }
-    // Move cursor to begin of next line.
+    // Clear screen and move cursor to first line.
     write!(stdout, "{}{}", clear::All, cursor::Goto(1,1)).unwrap();
 }
 
 
-// God mode is mode to change editor settings, save file and exit editor.
-fn god_mode(stdout: &mut termion::raw::RawTerminal<std::io::Stdout>) {
+/* 
+* God mode is mode to change editor settings, save file and exit editor.
+*/
+fn god_mode(stdout: &mut termion::raw::RawTerminal<std::io::Stdout>) -> bool {
 
     let terminal_size = termion::terminal_size().ok();
     let size = terminal_size.unwrap();
 
     let cursor_position = stdout.cursor_pos().unwrap();
 
-     write!(stdout,
+    write!(stdout,
             "{}:",
             cursor::Goto(1, size.1)
             ).unwrap();
     // Flush contents to screen.
     stdout.flush().unwrap();
-    
+
     let stdin = stdin();
+    let mut command: Vec<char> = Vec::new();
+
     for c in stdin.keys() {
         // Print the key we type...
         match c.unwrap() {
             Key::Char('\n') => break,
-            Key::Char(c)   => print!("{}", c),
+            Key::Char(c)   => {
+                                print!("{}", c);
+                                command.push(c);
+                                },
             Key::Left      => print!("{}", cursor::Left(1)),
             Key::Right     => print!("{}", cursor::Right(1)),
-            Key::Up        => println!(""),
-            Key::Down      => println!(""),
+            Key::Up        => print!(""),
+            Key::Down      => print!(""),
             Key::Esc       => break,
-            _              => println!(""),
+            Key::Backspace => {
+                                print!("{}", cursor::Left(1));
+                                let _ = command.pop();
+                                }
+            _              => print!("other"),
         }
         // Flush again.
         stdout.flush().unwrap();
@@ -123,12 +136,20 @@ fn god_mode(stdout: &mut termion::raw::RawTerminal<std::io::Stdout>) {
             ).unwrap();
     stdout.flush().unwrap();
 
+    let commands: String = command.into_iter().collect();
+
+    if commands == "q".to_string() {
+        return true;
+    }
+
     // Move cursor back where it was before was god mode activated.
     write!(stdout,
             "{}",
-            cursor::Goto(cursor_position.0, cursor_position.1)
+            cursor::Goto(cursor_position.0, cursor_position.1),
             ).unwrap();
     stdout.flush().unwrap();
+
+    return false;
 }
 
 fn main() {
@@ -163,7 +184,7 @@ mod tests {
     fn test_read_file() {
         let fileuri = "./src/text.txt";
         let content = "This is test text.".to_string();
-        assert_eq!(read_file(fileuri.to_string()), content);
+        assert_eq!(read_file(&fileuri.to_string()), content);
     }
 
 }
