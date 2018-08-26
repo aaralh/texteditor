@@ -73,6 +73,7 @@ fn editor_mode(content: String, fileuri: &String) {
             Key::Right       => print!("{}", cursor::Right(1)),
             Key::Up          => print!("{}", cursor::Up(1)),
             Key::Down        => print!("{}", cursor::Down(1)),
+            Key::Backspace   => print!("{} {}", cursor::Left(1), cursor::Left(1)),
             Key::Esc         => { 
                                 let result = god_mode(&mut stdout);
                                 if result {break;} else {continue}
@@ -121,7 +122,7 @@ fn god_mode(stdout: &mut termion::raw::RawTerminal<std::io::Stdout>) -> bool {
             Key::Down      => print!(""),
             Key::Esc       => break,
             Key::Backspace => {
-                                print!("{}", cursor::Left(1));
+                                print!("{} {}", cursor::Left(1), cursor::Left(1));
                                 let _ = command.pop();
                                 }
             _              => print!("other"),
