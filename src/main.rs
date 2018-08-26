@@ -1,7 +1,7 @@
 extern crate termion;
 
-// Import the color module.
-use termion::{color, clear, cursor};
+use termion::*;
+use termion::cursor::{self, DetectCursorPos};
 use termion::raw::IntoRawMode;
 
 use std::io::{Write, stdout, stdin};
@@ -14,9 +14,9 @@ use termion::event::Key;
 use termion::input::TermRead;
 
 
-fn read_file(fileuri: String) -> String {
+fn read_file(fileuri: &String) -> String {
 
-    let path = Path::new(&fileuri);
+    let path = Path::new(fileuri);
 
     // Try open file. If no file found return empty string.
     let mut f = match File::open(path) {
@@ -49,7 +49,7 @@ fn save_file(fileuri: String, content: String) -> bool {
 }
 
 // Editor mode handler.
-fn editor_mode(content: String) {
+fn editor_mode(content: String, fileuri: &String) {
 
     // Init raw mode.
     let mut stdout = stdout().into_raw_mode().unwrap();
@@ -65,22 +65,70 @@ fn editor_mode(content: String) {
     for c in stdin.keys() {
         // Print the key we type...
         match c.unwrap() {
-            Key::Char('q') => break,
+            Key::Char('q')   => break,
             Key::Char('\n') => print!("\n\r"),
             Key::Char(c)   => print!("{}", c),
             Key::Alt(c)    => println!("Alt-{}", c),
             Key::Ctrl(c)   => println!("Ctrl-{}", c),
-            Key::Left      => println!("<left>"),
-            Key::Right     => println!("<right>"),
-            Key::Up        => println!("<up>"),
-            Key::Down      => println!("<down>"),
+            Key::Left      => print!("{}", cursor::Left(1)),
+            Key::Right     => print!("{}", cursor::Right(1)),
+            Key::Up        => print!("{}", cursor::Up(1)),
+            Key::Down      => print!("{}", cursor::Down(1)),
+            Key::Esc       => god_mode(&mut stdout),
             _              => println!("Other"),
         }
         // Flush again.
         stdout.flush().unwrap();
     }
     // Move cursor to begin of next line.
-    write!(stdout, "\n\r").unwrap();
+    write!(stdout, "{}{}", clear::All, cursor::Goto(1,1)).unwrap();
+}
+
+
+// God mode is mode to change editor settings, save file and exit editor.
+fn god_mode(stdout: &mut termion::raw::RawTerminal<std::io::Stdout>) {
+
+    let terminal_size = termion::terminal_size().ok();
+    let size = terminal_size.unwrap();
+
+    let cursor_position = stdout.cursor_pos().unwrap();
+
+     write!(stdout,
+            "{}:",
+            cursor::Goto(1, size.1)
+            ).unwrap();
+    // Flush contents to screen.
+    stdout.flush().unwrap();
+    
+    let stdin = stdin();
+    for c in stdin.keys() {
+        // Print the key we type...
+        match c.unwrap() {
+            Key::Char('\n') => break,
+            Key::Char(c)   => print!("{}", c),
+            Key::Left      => print!("{}", cursor::Left(1)),
+            Key::Right     => print!("{}", cursor::Right(1)),
+            Key::Up        => println!(""),
+            Key::Down      => println!(""),
+            Key::Esc       => break,
+            _              => println!(""),
+        }
+        // Flush again.
+        stdout.flush().unwrap();
+    }
+
+     write!(stdout,
+            "{}",
+            clear::CurrentLine
+            ).unwrap();
+    stdout.flush().unwrap();
+
+    // Move cursor back where it was before was god mode activated.
+    write!(stdout,
+            "{}",
+            cursor::Goto(cursor_position.0, cursor_position.1)
+            ).unwrap();
+    stdout.flush().unwrap();
 }
 
 fn main() {
@@ -92,11 +140,11 @@ fn main() {
 
     // Check if file is passed via args.
     if args.len() == 2 {
-        let fileuri = env::args().nth(1).expect("Missing argument");;
+        let fileuri = &env::args().nth(1).expect("Missing argument");
         let content = read_file(fileuri);
-        editor_mode(content);
+        editor_mode(content, fileuri);
     } else {
-        editor_mode("".to_string())
+        editor_mode("".to_string(), &"".to_string());
     }
 }
 
